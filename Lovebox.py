@@ -1,10 +1,12 @@
 # Importando as bibliotecas
-import RPi.GPIO as GPIO
+# import RPi.GPIO as GPIO
 import time
 import datetime
-import sqlite3
-import I2C_LCD_driver
+from db import crud
 
+# import sqlite3
+# import I2C_LCD_driver
+'''
 # Definindo como configurar a GPIO (físico)
 GPIO.setmode(GPIO.BOARD)
 # GPIO.setmode(GPIO.BCM)
@@ -33,31 +35,10 @@ GPIO.setup(buzzer, GPIO.OUT)
 GPIO.setup(botao, GPIO.IN)
 
 
-# Configurações iniciais do bando de dados, do I2C, do buzzer e do LED de alarme
-dbconnect = sqlite3.connect('lovebox')
-cursor = dbconnect.cursor()
+# Configurações iniciais do I2C, do buzzer e do LED de alarme
 lcdi2c = I2C_LCD_driver.lcd()
 buzzState = False
 ledAlarmeState = False
-
-
-def atualizarHorario(horaAlarme, tempoLimite, idHorario):
-    cursor.execute('''
-        UPDATE horarios
-        SET horarioMedicacao = ?
-        , tempoLimite = ?
-        WHERE idHorario = ?;
-    ''', (horaAlarme, tempoLimite, idHorario,))
-    dbconnect.commit()
-
-def atualizarStatusIngestao(statusIngestao, idHorario):
-    cursor.execute('''
-        UPDATE horarios
-        SET statusIngestao = ?
-        WHERE idHorario = ?;
-    ''', (statusIngestao, idHorario,))
-    dbconnect.commit()
-
 
 def mensagemDisplay(horario, paciente, medicamento, dosagem, unidadeMedida):
     hora = str('Horario: ' + horario)
@@ -75,55 +56,55 @@ def semAlarme(compartimento):
     GPIO.output(ledCompartimento[compartimento], False)
     ledAlarmeState = False
     GPIO.output(ledAlarme, ledAlarmeState)
-
+'''
 # Atualizando o horário da medicação (para testes)
-atualizarHorario('15:14', '15:16', 1)
-atualizarHorario('15:14', '15:30', 2)
+crud.atualizarHorario('15:20', '15:16', 1)
+crud.atualizarHorario('15:21', '15:30', 2)
 
 
 # Atualizando o status de ingestão para 0 (para testes)
-atualizarStatusIngestao(0, 1)
-atualizarStatusIngestao(0, 2)
+crud.atualizarStatusIngestao(0, 1)
+crud.atualizarStatusIngestao(0, 2)
+
 
 
 # Criando um loop infinito
 while(True):
     # Selecionando os dados do banco de dados
-    dadosBD = cursor.execute('SELECT * FROM medicamentos INNER JOIN horarios WHERE medicamentos.id = horarios.id')
-	
+    dadosBD = crud.listar()
 
     for dadoBD in dadosBD:
         horaAtual = datetime.datetime.now().strftime("%H:%M") # Armazena o horário atual em uma variável
-        
-        
+            
         # Mudando os índices dos dados do banco para deixar o código mais intuitivo
-        dados = dict()
-        dados['id'] = dadoBD[0]
-        dados['paciente'] = dadoBD[1]
-        dados['medicamento'] = dadoBD[2]
-        dados['dosagem'] = dadoBD[3]
-        dados['um'] = dadoBD[4]
-        dados['compartimento'] = dadoBD[5]
-        dados['statusTratamento'] = dadoBD[6]
-        dados['idHorario'] = dadoBD[7]
-        dados['id'] = dadoBD[8]
-        dados['horarioMedicacao'] = dadoBD[9]
-        dados['tempoLimite'] = dadoBD[10]
-        dados['statusIngestao'] = dadoBD[11]
-        dados['statusSincronizacao'] = dadoBD[12]
+        id = dadoBD[0]
+        paciente = dadoBD[1]
+        medicamento = dadoBD[2]
+        dosagem = dadoBD[3]
+        um = dadoBD[4]
+        compartimento = dadoBD[5]
+        statusTratamento = dadoBD[6]
+        idHorario = dadoBD[7]
+        id = dadoBD[8]
+        horarioMedicacao = dadoBD[9]
+        tempoLimite = dadoBD[10]
+        statusIngestao = dadoBD[11]
+        statusSincronizacao = dadoBD[12]
+
+        print(paciente, horarioMedicacao, statusIngestao)
 
 
         # Se for o horário da medicação e ela não tiver sido ingerida
-        if ((horaAtual == dados['horarioMedicacao']) and (dados['statusIngestao'] == 0)):
+        if ((horaAtual == horarioMedicacao) and (statusIngestao == 0)):
             print('Disparar alarme')
-            print(dados['horarioMedicacao'], dados['paciente'], dados['medicamento'], dados['dosagem'], dados['um'])
+            print(horarioMedicacao, paciente, medicamento, dosagem, um)
 
             # Exibe a mensagem no dispaly
             lcdi2c.lcd_clear()
-            mensagemDisplay(dados['horarioMedicacao'], dados['paciente'], dados['medicamento'], dados['dosagem'], dados['um'])
+            mensagemDisplay(horarioMedicacao, paciente, medicamento, dosagem, um)
 
             # Acende o LED do compartimento do medicamento
-            GPIO.output(ledCompartimento[(dados['compartimento'])], True)            
+            GPIO.output(ledCompartimento[compartimento], True)            
             
             # Toca o alarme
             ledAlarmeState = False
@@ -140,21 +121,21 @@ while(True):
             # Se o botão for apertado
             if (GPIO.input(botao) == True):
                 print('Apertou o botao')
-                atualizarStatusIngestao(1, dados['idHorario']) # Status de ingestão vai para 1
-                semAlarme(dados['compartimento']) # O alarme para de tocar
+                crud.atualizarStatusIngestao(1, idHorario) # Status de ingestão vai para 1
+                semAlarme(compartimento) # O alarme para de tocar
                 lcdi2c.lcd_display_string('Medicamento ingerido', 2, 0) # Exibe uma mensagem no display
             else:
                 print('Não apertou o botao')
         
         
         # Se estiver no intervalo do tempo de ingestão e a medicação não tiver sido ingerida
-        elif((horaAtual > dados['horarioMedicacao']) and (horaAtual < dados['tempoLimite']) and (dados['statusIngestao'] == 0)):
+        elif((horaAtual > horarioMedicacao) and (horaAtual < tempoLimite) and (statusIngestao == 0)):
             # Exibe a mensagem no dispaly
             lcdi2c.lcd_clear()
-            mensagemDisplay(horaAtual, dados['paciente'], dados['medicamento'], dados['dosagem'], dados['um'])
+            mensagemDisplay(horaAtual, paciente, medicamento, dosagem, um)
 
             # Acende o LED do compartimento do medicamento
-            GPIO.output(ledCompartimento[(dados['compartimento'])], True)
+            GPIO.output(ledCompartimento[compartimento], True)
 
             # Acende o led alarme
             ledAlarmeState = True
@@ -165,23 +146,23 @@ while(True):
              # Se o botão for apertado
             if (GPIO.input(botao) == True):
                 print('Apertou o botao no intervalo')
-                atualizarStatusIngestao(1, dados['idHorario']) # Status de ingestão vai para 1
-                semAlarme(dados['compartimento']) # Some a mensagem do display e o o LED do compartimento apaga
+                crud.atualizarStatusIngestao(1, idHorario) # Status de ingestão vai para 1
+                semAlarme(compartimento) # Some a mensagem do display e o o LED do compartimento apaga
                 lcdi2c.lcd_display_string('Medicamento ingerido', 2, 0) # Exibe uma mensagem no display
             else:
                 print('Não apertou o botao no intervalo')
         
         
         # Se for o horário limite para ingerir a medicação e ela não tiver sido ingerida
-        elif ((horaAtual == dados['tempoLimite']) and (dados['statusIngestao'] == 0)):
+        elif ((horaAtual == tempoLimite) and (statusIngestao == 0)):
             print('Última chance de não atrasar')
 
             # Exibe a mensagem no dispaly
             lcdi2c.lcd_clear()
-            mensagemDisplay(dados['tempoLimite'], dados['paciente'], dados['medicamento'], dados['dosagem'], dados['um'])
+            mensagemDisplay(tempoLimite, paciente, medicamento, dosagem, um)
 
             # Acende o LED do compartimento do medicamento
-            GPIO.output(ledCompartimento[(dados['compartimento'])], True)
+            GPIO.output(ledCompartimento[compartimento], True)
             
             # Toca o alarme
             ledAlarmeState = False
@@ -198,21 +179,21 @@ while(True):
             # Se o botão for pressionado
             if (GPIO.input(botao) == True):
                 print('Apertou o botao')
-                atualizarStatusIngestao(1, dados['idHorario']) # Status de ingestão vai para 1
-                semAlarme(dados['compartimento'])  # O alarme para de tocar
+                crud.atualizarStatusIngestao(1, idHorario) # Status de ingestão vai para 1
+                semAlarme(compartimento)  # O alarme para de tocar
                 lcdi2c.lcd_display_string('Medicamento ingerido', 2, 0) # Exibe uma mensagem no display
             else:
                 print('Não apertou o botao')
 
 
         # Se a medicação não tiver sido ingerida dentro do tempo limite
-        elif ((horaAtual > dados['tempoLimite']) and (dados['statusIngestao'] == 0)):
+        elif ((horaAtual > tempoLimite) and (statusIngestao == 0)):
             print('Não tocar - atrasou')
 
             # O alarme para de tocar
-            semAlarme(dados['compartimento'])
+            semAlarme(compartimento)
             lcdi2c.lcd_clear()
-            lcdi2c.lcd_display_string('Paciente ' + dados['paciente'] + ' atrasou medicamento', 2, 0)
+            lcdi2c.lcd_display_string('Paciente ' + paciente + ' atrasou medicamento', 2, 0)
             time.sleep(5)
 
 
@@ -222,10 +203,10 @@ while(True):
             lcdi2c.lcd_display_string(horaAtual, 3, 7)
       
         # Se a medicação tiver sido ingerida dentro do tempo limite
-        if ((horaAtual > dados['tempoLimite']) and (dados['statusIngestao'] == 1)):
-            print('não tocar também - recarregando...')
-            semAlarme(dados['compartimento'])  # O alarme para de tocar
-            atualizarStatusIngestao(0, dados['idHorario']) # Status de ingestão vai para 0
+        # if ((horaAtual > tempoLimite) and (statusIngestao == 1)):
+        #     print('não tocar também - recarregando...')
+        #     semAlarme(compartimento)  # O alarme para de tocar
+        #     crud.atualizarStatusIngestao(0, idHorario) # Status de ingestão vai para 0
         
             
             
