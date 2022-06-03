@@ -4,6 +4,7 @@ import time
 import datetime
 from db import crud
 import lcd
+import alarme
 
 '''
 # Definindo como configurar a GPIO (físico)
@@ -51,12 +52,12 @@ ledAlarmeState = False
 #     # lcdi2c.lcd_display_string(dose, 4, 0)
 
 '''
-def semAlarme(compartimento):
-    # lcdi2c.lcd_clear()
-    lcd.limparDisplay()
-    GPIO.output(ledCompartimento[compartimento], False)
-    ledAlarmeState = False
-    GPIO.output(ledAlarme, ledAlarmeState)
+# def semAlarme(compartimento):
+#     # lcdi2c.lcd_clear()
+#     lcd.limparDisplay()
+#     GPIO.output(ledCompartimento[compartimento], False)
+#     ledAlarmeState = False
+#     GPIO.output(ledAlarme, ledAlarmeState)
 
 # Atualizando o horário da medicação (para testes)
 crud.atualizarHorario('15:20', '15:16', 1)
@@ -109,22 +110,24 @@ while(True):
             GPIO.output(ledCompartimento[compartimento], True)            
             
             # Toca o alarme
-            ledAlarmeState = False
-            for cont in range(0, 6):
-                buzzState = not buzzState
-                GPIO.output(buzzer, buzzState)
+            # ledAlarmeState = False
+            # for cont in range(0, 6):
+            #     buzzState = not buzzState
+            #     GPIO.output(buzzer, buzzState)
 
-                ledAlarmeState = not ledAlarmeState
-                GPIO.output(ledAlarme, ledAlarmeState)
-                time.sleep(1)
+            #     ledAlarmeState = not ledAlarmeState
+            #     GPIO.output(ledAlarme, ledAlarmeState)
+            #     time.sleep(1)
 
-            time.sleep(5)
+            # time.sleep(5)
+
+            alarme.dispararAlarme()
 
             # Se o botão for apertado
             if (GPIO.input(botao) == True):
                 print('Apertou o botao')
                 crud.atualizarStatusIngestao(1, idHorario) # Status de ingestão vai para 1
-                semAlarme(compartimento) # O alarme para de tocar
+                alarme.semAlarme(compartimento) # O alarme para de tocar
                 lcdi2c.lcd_display_string('Medicamento ingerido', 2, 0) # Exibe uma mensagem no display
             else:
                 print('Não apertou o botao')
@@ -150,7 +153,7 @@ while(True):
             if (GPIO.input(botao) == True):
                 print('Apertou o botao no intervalo')
                 crud.atualizarStatusIngestao(1, idHorario) # Status de ingestão vai para 1
-                semAlarme(compartimento) # Some a mensagem do display e o o LED do compartimento apaga
+                alarme.semAlarme(compartimento) # Some a mensagem do display e o o LED do compartimento apaga
                 lcd.exibirMensagem('Medicamento ingerido', 2, 0) # Exibe uma mensagem no display
             else:
                 print('Não apertou o botao no intervalo')
@@ -169,22 +172,24 @@ while(True):
             GPIO.output(ledCompartimento[compartimento], True)
             
             # Toca o alarme
-            ledAlarmeState = False
-            for cont in range(0, 6):
-                buzzState = not buzzState
-                GPIO.output(buzzer, buzzState)
+            # ledAlarmeState = False
+            # for cont in range(0, 6):
+            #     buzzState = not buzzState
+            #     GPIO.output(buzzer, buzzState)
 
-                ledAlarmeState = not ledAlarmeState
-                GPIO.output(ledAlarme, ledAlarmeState)
-                time.sleep(1)
+            #     ledAlarmeState = not ledAlarmeState
+            #     GPIO.output(ledAlarme, ledAlarmeState)
+            #     time.sleep(1)
 
-            time.sleep(5)
+            # time.sleep(5)
+
+            alarme.dispararAlarme()
 
             # Se o botão for pressionado
             if (GPIO.input(botao) == True):
                 print('Apertou o botao')
                 crud.atualizarStatusIngestao(1, idHorario) # Status de ingestão vai para 1
-                semAlarme(compartimento)  # O alarme para de tocar
+                alarme.semAlarme(compartimento)  # O alarme para de tocar
                 lcd.exibirMensagem('Medicamento ingerido', 2, 0) # Exibe uma mensagem no display
             else:
                 print('Não apertou o botao')
@@ -195,7 +200,7 @@ while(True):
             print('Não tocar - atrasou')
 
             # O alarme para de tocar
-            semAlarme(compartimento)
+            alarme.semAlarme(compartimento)
             # lcdi2c.lcd_clear()
             lcd.limparDisplay()
             lcd.exibirMensagem('Paciente ' + paciente + ' atrasou medicamento', 2, 0)
@@ -211,7 +216,7 @@ while(True):
         # Se a medicação tiver sido ingerida dentro do tempo limite
         # if ((horaAtual > tempoLimite) and (statusIngestao == 1)):
         #     print('não tocar também - recarregando...')
-        #     semAlarme(compartimento)  # O alarme para de tocar
+        #     alarme.semAlarme(compartimento)  # O alarme para de tocar
         #     crud.atualizarStatusIngestao(0, idHorario) # Status de ingestão vai para 0
         
             
